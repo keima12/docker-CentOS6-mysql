@@ -1,0 +1,37 @@
+FROM centos:6
+
+RUN sed -i -e "s/^mirrorlist=http:\/\/mirrorlist.centos.org/#mirrorlist=http:\/\/mirrorlist.centos.org/g" "/etc/yum.repos.d/CentOS-Base.repo"
+RUN sed -i -e "s/^#baseurl=http:\/\/mirror.centos.org/baseurl=http:\/\/vault.centos.org/g" "/etc/yum.repos.d/CentOS-Base.repo"
+RUN yum -y update
+RUN rpm -Uvh https://archives.fedoraproject.org/pub/archive/epel/6/x86_64/epel-release-6-8.noarch.rpm && \
+    rpm -Uvh http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
+
+RUN yum -y install --enablerepo=remi --enablerepo=remi-php56 \
+        php \
+        php-devel \
+        php-mbstring \
+        php-pdo \
+        php-gd \
+        php-xml \
+        php-mcrypt \
+        php-mysql \
+        php-pear \
+        php-xdebug \
+        php-pecl-xdebug \
+    && yum install -y \
+        zip \
+        unzip \
+        httpd \
+        gcc \
+        yum-utils
+RUN yum -y install https://dev.mysql.com/get/mysql80-community-release-el6-3.noarch.rpm
+# インストールするDBのバージョンを5.7に切り替える
+RUN yum-config-manager --disable mysql80-community \
+    && yum-config-manager --enable mysql57-community
+RUN yum -y install mysql mysql-devel mysql-utilities
+RUN yum clean all
+
+RUN curl -sS https://getcomposer.org/installer | php \
+    && mv composer.phar /usr/local/bin/composer
+
+CMD ["/usr/sbin/apachectl","-DFOREGROUND"]
