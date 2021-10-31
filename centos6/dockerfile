@@ -1,37 +1,53 @@
 FROM centos:6
 
+# baseパッケージの設定を修正して、vaultレポジトリを参照するように変更する。
 RUN sed -i -e "s/^mirrorlist=http:\/\/mirrorlist.centos.org/#mirrorlist=http:\/\/mirrorlist.centos.org/g" "/etc/yum.repos.d/CentOS-Base.repo"
 RUN sed -i -e "s/^#baseurl=http:\/\/mirror.centos.org/baseurl=http:\/\/vault.centos.org/g" "/etc/yum.repos.d/CentOS-Base.repo"
 RUN yum -y update
-RUN rpm -Uvh https://archives.fedoraproject.org/pub/archive/epel/6/x86_64/epel-release-6-8.noarch.rpm && \
-    rpm -Uvh http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
-
-RUN yum -y install --enablerepo=remi --enablerepo=remi-php56 \
-        php \
-        php-devel \
-        php-mbstring \
-        php-pdo \
-        php-gd \
-        php-xml \
-        php-mcrypt \
-        php-mysql \
-        php-pear \
-        php-xdebug \
-        php-pecl-xdebug \
-    && yum install -y \
+# epelレポジトリも取得先を修正する。 
+RUN rpm -Uvh https://archives.fedoraproject.org/pub/archive/epel/6/x86_64/epel-release-6-8.noarch.rpm
+RUN yum install -y \
         zip \
         unzip \
-        httpd \
         gcc \
-        yum-utils
+        yum-utils \
+        httpd \
+        mod_ssl \
+        yum-priorities
+
+# ius repo
+RUN yum install -y https://vault.ius.io/el6/x86_64/packages/i/ius-release-2-1.el6.ius.noarch.rpm
+RUN sed -i -e "s/^baseurl = https:\/\/repo.ius.io\/6/baseurl = https:\/\/vault.ius.io\/el6/g" "/etc/yum.repos.d/ius.repo"
+# RUN yum clean all && yum makecache 
+# RUN yum -y install httpd24u.x86_64 httpd24u-mod_ssl.x86_64 httpd24u-devel.x86_64
+
+
+# phpのインストール
+ENV phpver 56
+RUN rpm -Uvh http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
+RUN yum -y install --enablerepo=remi, remi-php${phpver}\
+        php${phpver}-php\
+        php${phpver}-php-devel \
+        php${phpver}-php-mbstring \
+        php${phpver}-php-pdo \
+        php${phpver}-php-gd \
+        php${phpver}-php-xml \
+        php${phpver}-php-mcrypt \
+        php${phpver}-php-mysql \
+        php${phpver}-php-pear \
+        php${phpver}-php-xdebug \
+        php${phpver}-php-pecl-xdebug
+
+# # mysql
+ENV mysqlver 56
 RUN yum -y install https://dev.mysql.com/get/mysql80-community-release-el6-3.noarch.rpm
-# インストールするDBのバージョンを5.7に切り替える
+# # インストールするDBのバージョンを切り替える
 RUN yum-config-manager --disable mysql80-community \
-    && yum-config-manager --enable mysql57-community
+    && yum-config-manager --enable mysql{mysqlver}-community
 RUN yum -y install mysql mysql-devel mysql-utilities
 RUN yum clean all
 
-RUN curl -sS https://getcomposer.org/installer | php \
+RUN curl -sS https://getcomposer.org/installer | php${phpver} \
     && mv composer.phar /usr/local/bin/composer
 
 CMD ["/usr/sbin/apachectl","-DFOREGROUND"]
